@@ -337,3 +337,8 @@ scripts/                        serve_laya / serve_vision / gazebo_test / tb4_te
   running, the depot fell to 0.008×. See the Gazebo table for what was slowing it.
 - License: `TODO` in package.xml. Pick one before sharing. `sim2d/worlds/maze.sdf` is
   iRobot's (BSD-3-Clause).
+
+## Contributors and AI use
+
+Most of this project was written by an AI coding assistant, Claude (Anthropic), working in
+Claude Code at the owner's direction. [CONTRIBUTORS.md](CONTRIBUTORS.md) lists who did what.
