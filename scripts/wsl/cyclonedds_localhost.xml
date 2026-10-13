@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ROS 2 middleware config for WSL2 with networkingMode=mirrored: Fast DDS's default
+     multicast discovery fails there, so use CycloneDDS on one loopback address with unicast
+     discovery between local participants.
+     Mirrored mode routes 127.0.0.1 itself through loopback0 to Windows and back (ip rule:
+     all TCP/UDP looks up table 127 first): a 1500-byte MTU path through Hyper-V that drops
+     IP-fragmented UDP. Every ROS message crossed it, cut into 1.2 KB datagrams: a 300 KB
+     depth frame was 273 packets, and the kernel time and stalls throttled the whole sim.
+     Any other loopback address stays on Linux's own lo (MTU 64 KiB), so ros_env.sh picks
+     one (127.0.0.2) and sets CREATE3_DDS_*; without one, this falls back to 127.0.0.1 with
+     datagrams under the MTU. -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface address="${CREATE3_DDS_ADDRESS:-127.0.0.1}"/>
+      </Interfaces>
+      <AllowMulticast>false</AllowMulticast>
+      <MaxMessageSize>${CREATE3_DDS_MAX_MESSAGE:-1400B}</MaxMessageSize>
+      <FragmentSize>${CREATE3_DDS_FRAGMENT:-1200B}</FragmentSize>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>200</MaxAutoParticipantIndex>
+      <Peers>
+        <Peer address="${CREATE3_DDS_ADDRESS:-127.0.0.1}"/>
+      </Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

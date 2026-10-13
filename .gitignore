@@ -1,0 +1,8 @@
+.venv-laya/
+models/
+runs/
+__pycache__/
+*.pyc
+build/
+install/
+log/

@@ -1,0 +1,73 @@
+{
+  "world": "maze",
+  "note": "Map frame of create3_sim's maze.sdf; the robot spawns docked at (0, 0) facing +x. Every place was checked reachable from the dock by the planner. Kept to 9 places: with \"no place\" that is 10 options; Laya ships no valid calibration for Choice questions with 11 or more options. The dock place carries \"face\": where the dock itself is (create3_spawn puts it 0.157 m ahead of the docked robot), so the robot turns to see it before docking.",
+  "places": {
+    "dock": {
+      "xy": [
+        -0.6,
+        0.0
+      ],
+      "description": "charging dock in the maze center, the robot's home base",
+      "face": [
+        0.2,
+        0.0
+      ]
+    },
+    "north_west_room": {
+      "xy": [
+        -6.0,
+        6.5
+      ],
+      "description": "big room, top-left / north-west"
+    },
+    "west_room": {
+      "xy": [
+        -5.0,
+        3.0
+      ],
+      "description": "room on the west side, left of center"
+    },
+    "south_west_corner": {
+      "xy": [
+        -8.5,
+        -8.5
+      ],
+      "description": "bottom-left / south-west corner"
+    },
+    "south_room": {
+      "xy": [
+        -1.0,
+        -7.5
+      ],
+      "description": "open room at the bottom / south"
+    },
+    "south_east_room": {
+      "xy": [
+        6.0,
+        -7.0
+      ],
+      "description": "room at bottom-right / south-east"
+    },
+    "east_hall": {
+      "xy": [
+        7.0,
+        -2.0
+      ],
+      "description": "big open hall on the east / right side"
+    },
+    "east_room": {
+      "xy": [
+        8.0,
+        4.0
+      ],
+      "description": "room on the east side, north of the hall"
+    },
+    "north_east_corner": {
+      "xy": [
+        8.5,
+        8.5
+      ],
+      "description": "top-right / north-east corner"
+    }
+  }
+}

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create 3 Replay</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1f2328; --muted: #6b7280; --line: #e3e1da;
+    --wall: #3b3f46; --floor: #fbfaf7; --route: #2f6fde; --trail: #9aa3ae; --robot: #e8590c;
+    --place: #7c3aed; --ok: #1a7f37; --warn: #b54708; --bad: #c62828; --bar: #2f6fde;
+    --chip: #f0eee8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171a; --panel: #1d2024; --ink: #e6e7e9; --muted: #9aa0a8; --line: #2c3036;
+      --wall: #c9ccd1; --floor: #1a1d21; --route: #6ea8ff; --trail: #5d6570; --robot: #ff8a3d;
+      --place: #b794f6; --ok: #4ac26b; --warn: #f0a24a; --bad: #ff6b6b; --bar: #6ea8ff;
+      --chip: #262a30;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171a; --panel: #1d2024; --ink: #e6e7e9; --muted: #9aa0a8; --line: #2c3036;
+    --wall: #c9ccd1; --floor: #1a1d21; --route: #6ea8ff; --trail: #5d6570; --robot: #ff8a3d;
+    --place: #b794f6; --ok: #4ac26b; --warn: #f0a24a; --bad: #ff6b6b; --bar: #6ea8ff;
+    --chip: #262a30;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 14px 16px 6px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--chip); border: 1px solid var(--line); border-radius: 999px;
+          padding: 2px 10px; font-size: 12px; color: var(--muted); }
+  .chip b { color: var(--ink); font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr);
+         gap: 12px; padding: 8px 16px 16px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+          padding: 12px; min-width: 0; }
+  canvas { width: 100%; aspect-ratio: 1 / 1; display: block; border-radius: 6px;
+           background: var(--floor); touch-action: none; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+  .controls input[type=range] { flex: 1 1 160px; }
+  button, select { background: var(--chip); color: var(--ink); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  label { color: var(--muted); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+  .time { font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+       margin: 14px 0 6px; }
+  h2:first-child { margin-top: 0; }
+  .task { border-left: 3px solid var(--line); padding: 4px 0 6px 10px; margin-bottom: 8px; }
+  .task.now { border-color: var(--route); }
+  .task .text { font-weight: 600; }
+  .task .meta { color: var(--muted); font-size: 12px; }
+  .refuse { color: var(--bad); } .clarify { color: var(--warn); }
+  .steps { margin: 4px 0 0; padding-left: 18px; }
+  .steps li.cur { font-weight: 600; color: var(--route); }
+  .steps li.done { color: var(--ok); } .steps li.failed, .steps li.stopped { color: var(--bad); }
+  .steps li.replaced { color: var(--muted); text-decoration: line-through; }
+  .bars { display: grid; grid-template-columns: max-content 1fr 44px; gap: 3px 8px;
+          align-items: center; font-size: 12px; }
+  .bars .track { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; }
+  .bars .fill { height: 100%; background: var(--bar); }
+  .bars .pick { font-weight: 700; }
+  .src { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px;
+         border: 1px solid var(--line); }
+  .src.laya { color: var(--route); } .src.code { color: var(--ok); }
+  .src.fallback { color: var(--warn); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  pre { font-size: 11px; overflow: auto; max-height: 260px; background: var(--chip);
+        padding: 8px; border-radius: 6px; margin: 6px 0 0; }
+  .empty { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Create 3 &middot; Laya replay</h1>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <section class="card">
+    <canvas id="map" width="900" height="900" aria-label="Maze map with the robot's path"></canvas>
+    <div class="controls">
+      <button id="play" type="button">Play</button>
+      <select id="speed" aria-label="Playback speed">
+        <option value="1">1&times;</option><option value="4" selected>4&times;</option>
+        <option value="16">16&times;</option>
+      </select>
+      <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Time">
+      <span class="time" id="clock">0.0 s</span>
+      <label><input id="follow" type="checkbox"> follow robot</label>
+    </div>
+  </section>
+  <section class="card" id="side">
+    <h2>Tasks</h2><div id="tasks"></div>
+    <h2>Driving decision</h2><div id="decision"></div>
+  </section>
+</main>
+<script>
+const RUN = "__RUN_DATA__";
+const $ = id => document.getElementById(id);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const F = RUN.frames, D = RUN.decisions, T = RUN.tasks, R = RUN.routes, E = RUN.events;
+const S = RUN.summary;
+let idx = 0, playing = false, last = null;
+
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function chip(k, v) { return `<span class="chip">${esc(k)} <b>${esc(v)}</b></span>`; }
+$('chips').innerHTML = [
+  chip('status', S.mission_status), chip('driver', S.driver),
+  chip('tasks via', S.task_model || S.backend), chip('sim time', S.sim_seconds + ' s'),
+  chip('driven', S.distance_driven_m + ' m'), chip('blocked steps', S.blocked_steps),
+  chip('decisions', Object.entries(S.decision_sources).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'),
+  S.latency_p50_ms != null ? chip('Laya p50', S.latency_p50_ms + ' ms') : '',
+].join('');
+
+// --- map ------------------------------------------------------------------------
+const canvas = $('map'), ctx = canvas.getContext('2d');
+let bounds = (() => {
+  let xs = [], ys = [];
+  RUN.boxes.forEach(b => { for (let i = 0; i < 8; i += 2) { xs.push(b[i]); ys.push(b[i + 1]); } });
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+})();
+function view(frame) {
+  if ($('follow').checked && frame) {
+    const r = 1.6;
+    return { x0: frame[1] - r, x1: frame[1] + r, y0: frame[2] - r, y1: frame[2] + r };
+  }
+  return bounds;
+}
+function draw() {
+  const f = F[idx], v = view(f), W = canvas.width, H = canvas.height, pad = 12;
+  const s = Math.min((W - 2 * pad) / (v.x1 - v.x0), (H - 2 * pad) / (v.y1 - v.y0));
+  const ox = pad + ((W - 2 * pad) - s * (v.x1 - v.x0)) / 2, oy = pad + ((H - 2 * pad) - s * (v.y1 - v.y0)) / 2;
+  const X = x => ox + (x - v.x0) * s, Y = y => H - (oy + (y - v.y0) * s);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = css('--floor'); ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = css('--wall');
+  RUN.boxes.forEach(b => {
+    ctx.beginPath(); ctx.moveTo(X(b[0]), Y(b[1]));
+    for (let i = 2; i < 8; i += 2) ctx.lineTo(X(b[i]), Y(b[i + 1]));
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.font = `${Math.max(11, Math.min(15, s * 0.32))}px system-ui, sans-serif`;
+  for (const [name, [px, py]] of Object.entries(RUN.places)) {
+    ctx.fillStyle = css('--place');
+    ctx.beginPath(); ctx.arc(X(px), Y(py), 4, 0, 7); ctx.fill();
+    ctx.fillText(name.replace(/_/g, ' '), X(px) + 6, Y(py) - 6);
+  }
+  if (!f) return;
+  const route = [...R].reverse().find(r => r.t <= f[0]);
+  if (route && f[10] !== -1) {
+    ctx.strokeStyle = css('--route'); ctx.lineWidth = 2; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); route.path.forEach(([x, y], i) => i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)));
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.strokeStyle = css('--trail'); ctx.lineWidth = 2;
+  ctx.beginPath(); for (let i = 0; i <= idx; i++) i ? ctx.lineTo(X(F[i][1]), Y(F[i][2])) : ctx.moveTo(X(F[i][1]), Y(F[i][2]));
+  ctx.stroke();
+  const [, x, y, yaw, ir] = f, c = Math.cos(yaw), sn = Math.sin(yaw);
+  RUN.ir_sensors.forEach(([label, sx, sy, syaw], i) => {
+    const d = Math.min(RUN.ir_max_range, Math.max(0, -Math.log(Math.max(ir[i], 1) / 3500) * RUN.ir_max_range / (2 * Math.E)));
+    const wx = x + c * sx - sn * sy, wy = y + sn * sx + c * sy, a = yaw + syaw;
+    const hit = d < 0.19;
+    ctx.strokeStyle = hit ? css('--bad') : css('--trail'); ctx.lineWidth = hit ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(X(wx), Y(wy)); ctx.lineTo(X(wx + Math.cos(a) * d), Y(wy + Math.sin(a) * d)); ctx.stroke();
+  });
+  ctx.fillStyle = css('--robot'); ctx.globalAlpha = 0.85;
+  ctx.beginPath(); ctx.arc(X(x), Y(y), Math.max(4, RUN.robot_radius * s), 0, 7); ctx.fill();
+  ctx.globalAlpha = 1; ctx.strokeStyle = css('--floor'); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(X(x), Y(y));
+  ctx.lineTo(X(x + c * RUN.robot_radius), Y(y + sn * RUN.robot_radius)); ctx.stroke();
+  if (f[8] && f[8].length) {
+    ctx.strokeStyle = css('--bad'); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(X(x), Y(y), RUN.robot_radius * s + 4, 0, 7); ctx.stroke();
+  }
+}
+
+// --- side panel -----------------------------------------------------------------
+function bars(probs, pick) {
+  if (!probs) return '';
+  return '<div class="bars">' + Object.entries(probs).sort((a, b) => b[1] - a[1]).map(([k, p]) =>
+    `<span class="${k === pick ? 'pick' : ''}">${esc(k.replace(/_/g, ' '))}</span>` +
+    `<div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%"></div></div>` +
+    `<span>${(p * 100).toFixed(0)}%</span>`).join('') + '</div>';
+}
+function stepStatus(mission, step, t) {
+  let status = '';
+  for (const e of E) if (e.mission === mission && e.step === step && e.t <= t) status = e.status;
+  return status;
+}
+function renderTasks(t, f) {
+  const shown = T.filter(k => k.t <= t);
+  if (!shown.length) { setPanel('tasks', '<div class="empty">No task yet.</div>'); return; }
+  setPanel('tasks', shown.map((k, ti) => {
+    const now = typeof k.mission === 'number' && f && f[10] === k.mission;
+    const steps = k.steps.map((s, i) => {
+      const st = typeof k.mission === 'number' ? stepStatus(k.mission, i, t) : '';
+      const cls = now && f[9] === i ? 'cur' : (st === 'started' ? '' : st);
+      return `<li class="${cls}">${esc(s)}${st && st !== 'started' ? ` &middot; ${esc(st)}` : ''}</li>`;
+    }).join('');
+    const clauses = k.clauses.map((c, ci) => `<details data-key="t${ti}c${ci}"><summary>"${esc(c.text)}" &rarr; ${esc(c.skill)}` +
+      `${c.place && c.skill === 'go_to' ? ' / ' + esc(c.place) : ''} (skill conf ${(c.skill_confidence * 100).toFixed(0)}%)` +
+      `${c.resolved ? ` &middot; code rule: ${esc(c.resolved)}` : ''}</summary>` +
+      `<div style="margin-top:6px">${bars(c.skill_probabilities, c.skill)}</div>` +
+      (c.skill === 'go_to' ? `<div style="margin-top:6px">${bars(c.place_probabilities, c.place)}</div>` : '') +
+      `</details>`).join('');
+    const note = k.refusal ? `<div class="refuse">${esc(k.refusal)}</div>` :
+      k.clarification ? `<div class="clarify">${esc(k.clarification)}</div>` : '';
+    return `<div class="task ${now ? 'now' : ''}"><div class="text">"${esc(k.text)}"</div>` +
+      `<div class="meta">t = ${k.t.toFixed(1)} s &middot; ${esc(k.action)}` +
+      `${k.busy ? ` &middot; timing: ${esc(k.timing)}` : ''} &middot; ${k.wall_ms} ms</div>${note}` +
+      (steps ? `<ol class="steps">${steps}</ol>` : '') + clauses + '</div>';
+  }).join(''));
+}
+function renderDecision(t, f) {
+  let d = null;
+  for (let lo = 0, hi = D.length - 1; lo <= hi;) {
+    const mid = (lo + hi) >> 1;
+    if (D[mid].t <= t) { d = D[mid]; lo = mid + 1; } else hi = mid - 1;
+  }
+  if (!d || !f || f[10] === -1) { setPanel('decision', '<div class="empty">Not driving.</div>'); return; }
+  const kind = d.source.startsWith('fallback') ? 'fallback' : d.source;
+  const cmd = RUN.sources[f[7]];
+  setPanel('decision',
+    `<div><b>${esc(d.action.replace(/_/g, ' '))}</b> <span class="src ${kind}">${esc(d.source)}</span>` +
+    `${d.confidence != null ? ` &middot; confidence ${(d.confidence * 100).toFixed(0)}%` : ''}` +
+    `${d.latency != null ? ` &middot; ${(d.latency * 1000).toFixed(0)} ms` : ''}</div>` +
+    `<div class="meta" style="color:var(--muted);font-size:12px">at t = ${d.t.toFixed(1)} s &middot; wheels: v ${f[5]} m/s, w ${f[6]} rad/s (${esc(cmd)})` +
+    `${d.detour && d.detour !== 'none' ? ` &middot; detour ${esc(d.detour)}` : ''}</div>` +
+    (Object.keys(d.probabilities || {}).length ? `<div style="margin-top:8px">${bars(d.probabilities, d.action)}</div>` : '') +
+    (d.state ? `<details data-key="state"><summary>state the driver saw</summary><pre>${esc(JSON.stringify(d.state, null, 1))}</pre></details>` : ''));
+}
+// Panels are rebuilt from scratch; skip unchanged HTML and keep expanded <details> open.
+const openDetails = {};
+function setPanel(id, html) {
+  const el = $(id);
+  if (el.dataset.html === html) return;
+  el.querySelectorAll('details').forEach(d => {
+    const key = d.dataset.key; if (key) openDetails[key] = d.open;
+  });
+  el.innerHTML = html; el.dataset.html = html;
+  el.querySelectorAll('details').forEach(d => { if (openDetails[d.dataset.key]) d.open = true; });
+}
+function render() {
+  const f = F[idx], t = f ? f[0] : 0;
+  $('scrub').value = idx; $('clock').textContent = t.toFixed(1) + ' s';
+  draw(); renderTasks(t, f); renderDecision(t, f);
+}
+
+$('scrub').max = Math.max(0, F.length - 1);
+$('scrub').addEventListener('input', e => { idx = +e.target.value; render(); });
+$('follow').addEventListener('change', render);
+$('play').addEventListener('click', () => {
+  playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play';
+  if (playing && idx >= F.length - 1) idx = 0;
+  last = null; if (playing) requestAnimationFrame(tick);
+});
+function tick(now) {
+  if (!playing) return;
+  if (last != null && F.length) {
+    const target = F[idx][0] + (now - last) / 1000 * +$('speed').value;
+    while (idx < F.length - 1 && F[idx + 1][0] <= target) idx++;
+    if (idx >= F.length - 1) { playing = false; $('play').textContent = 'Play'; }
+  }
+  last = now; render();
+  if (playing) requestAnimationFrame(tick);
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+idx = Math.max(0, F.length - 1);
+render();
+</script>
+</body>
+</html>
